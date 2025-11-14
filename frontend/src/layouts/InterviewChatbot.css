@@ -1,0 +1,30 @@
+/* Lớp Layout chính của toàn bộ ứng dụng */
+.chatbot-layout {
+  height: 100vh;
+  /* Ngăn không cho trình duyệt scroll khi nội dung chat quá dài */
+  overflow: hidden; 
+}
+
+/* Lớp Content chính (chứa cửa sổ chat và input) */
+.chatbot-content {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  /* 89px là chiều cao cố định của Header */
+  height: calc(100vh - 89px);
+  
+  /* Hiệu ứng chuyển động mượt mà khi đổi theme */
+  transition: background-color 0.3s;
+}
+
+/* Kiểu theme Sáng */
+.chatbot-content[data-theme='light'] {
+  background: #f8f9fa;
+}
+
+/* Kiểu theme Tối */
+.chatbot-content[data-theme='dark'] {
+  background: #141414;
+}
+
+

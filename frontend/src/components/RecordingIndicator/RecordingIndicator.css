@@ -1,0 +1,55 @@
+/* --- Lớp bao bọc chính --- */
+.recording-indicator-wrapper {
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Hiệu ứng chuyển động mượt mà khi đổi theme */
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+/* Kiểu theme Sáng */
+.recording-indicator-wrapper[data-theme='light'] {
+  background: #fff7e6;
+  border-top: 1px solid #ffd666;
+}
+
+/* Kiểu theme Tối */
+.recording-indicator-wrapper[data-theme='dark'] {
+  background: #221b0a;
+  border-top: 1px solid #d48806;
+}
+
+/* --- Văn bản "Recording..." --- */
+.recording-indicator-text {
+  color: #f5222d;
+  font-weight: 500;
+}
+
+/* Lớp .recording-bar này đã có trong code gốc (GlobalStyles) 
+  để xử lý animation. 
+  Chúng ta chỉ cần thêm các style tĩnh cho nó.
+*/
+.recording-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* --- Các thanh nhấp nháy --- */
+.recording-bar > div {
+  width: 3px;
+  background: #f5222d;
+  border-radius: 2px;
+}
+
+/* Style riêng cho từng thanh (từ inline style cũ) */
+.recording-bar > div:nth-child(1) {
+  height: 12px;
+}
+.recording-bar > div:nth-child(2) {
+  height: 20px;
+}
+.recording-bar > div:nth-child(3) {
+  height: 12px;
+}
