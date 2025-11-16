@@ -74,11 +74,12 @@ export const useSpeech = (handleSend, stagedFiles) => {
   const handleVoiceToggle = () => {
     if (!recognition) {
         console.error("Trình duyệt của bạn không hỗ trợ Speech-to-Text.");
-      return false; // (SỬA) Trả về false nếu thất bại
+      return false; // Trả về false nếu thất bại
     }
     setIsRecording(!isRecording);
-    return true; // (SỬA) Trả về true nếu thành công
+    return true; // Trả về true nếu thành công
   };
 
   return { input, setInput, isRecording, setIsRecording, handleVoiceToggle, silenceTimeoutRef, inputRef };
 };
+

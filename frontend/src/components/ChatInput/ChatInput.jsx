@@ -10,7 +10,6 @@ import {
 
 import './ChatInput.css';
 
-// (SỬA) Thêm props: stagedFiles, handleRemoveStagedFile
 const ChatInput = ({ 
   input, 
   setInput, 
@@ -19,8 +18,8 @@ const ChatInput = ({
   handleVoiceToggle, 
   handleFileUpload, 
   themeMode,
-  stagedFiles,            // (MỚI) Nhận file chờ
-  handleRemoveStagedFile // (MỚI) Nhận hàm xóa file
+  stagedFiles,          
+  handleRemoveStagedFile 
 }) => {
   return (
     <div
@@ -75,8 +74,8 @@ const ChatInput = ({
           accept=".pdf,.png,.jpg,.jpeg"
           showUploadList={false}
           onChange={handleFileUpload}
-          beforeUpload={() => false} // Quan trọng: Ngăn Antd tự động upload
-          multiple // (MỚI) Cho phép chọn nhiều file
+          beforeUpload={() => false} 
+          multiple 
         >
           <Tooltip title="Đính kèm file">
             <Button
@@ -90,7 +89,7 @@ const ChatInput = ({
         </Upload>
         <Input
           size="large"
-          placeholder="Gửi tin nhắn" // (SỬA) Cập nhật placeholder
+          placeholder="Gửi tin nhắn" 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onPressEnter={handleSend}
@@ -102,7 +101,7 @@ const ChatInput = ({
             type="primary"
             icon={<SendOutlined />}
             onClick={handleSend}
-            // (SỬA) Cập nhật logic disabled: Chỉ bật khi có text hoặc có file
+            // Cập nhật logic disabled: Chỉ bật khi có text hoặc có file
             disabled={!input.trim() && stagedFiles.length === 0}
           />
         </Tooltip>

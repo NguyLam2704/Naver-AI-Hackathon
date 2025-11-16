@@ -1,19 +1,19 @@
 /* Lớp Layout chính của toàn bộ ứng dụng */
 .chatbot-layout {
-  height: 100vh;
-  /* Ngăn không cho trình duyệt scroll khi nội dung chat quá dài */
+  height: 100dvh; 
   overflow: hidden; 
 }
 
-/* Lớp Content chính (chứa cửa sổ chat và input) */
+/* Lớp Content chính (chứa cửa sổ chat) */
 .chatbot-content {
   margin: 0;
+  
+  /* (SỬA) Content giờ là flex container để ChatWindow (con) co dãn */
   display: flex;
   flex-direction: column;
-  /* 89px là chiều cao cố định của Header */
-  height: calc(100vh - 89px);
+  height: 100%;
+  overflow: hidden; /* Để child (ChatWindow) cuộn */
   
-  /* Hiệu ứng chuyển động mượt mà khi đổi theme */
   transition: background-color 0.3s;
 }
 
@@ -27,4 +27,16 @@
   background: #141414;
 }
 
-
+/* (MỚI) Style cho Footer (chứa ô input) */
+.chatbot-footer {
+  padding: 0; /* Ghi đè padding mặc định của Antd */
+  
+  /* (SỬA) Thêm màu nền cho Footer để khớp với theme */
+  transition: background-color 0.3s, border-color 0.3s;
+}
+.chatbot-footer[data-theme='light'] {
+  background: #ffffff;
+}
+.chatbot-footer[data-theme='dark'] {
+  background: #1f1f1f;
+}

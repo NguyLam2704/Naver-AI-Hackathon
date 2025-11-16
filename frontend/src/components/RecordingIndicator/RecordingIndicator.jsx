@@ -7,19 +7,16 @@ const RecordingIndicator = ({ isRecording, themeMode }) => {
 
   return (
     <div
-      // (SỬA) Dùng className và data-theme
       className="recording-indicator-wrapper"
       data-theme={themeMode}
     >
       <Space>
         <div className="recording-bar">
-          {/* (SỬA) Xóa inline styles, chúng đã ở trong file CSS */}
           <div />
           <div />
           <div />
         </div>
         <span 
-          // (SỬA) Dùng className
           className="recording-indicator-text"
         >
           Recording...
