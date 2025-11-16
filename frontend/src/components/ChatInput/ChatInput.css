@@ -1,55 +1,80 @@
+/* --- Lớp bao bọc chính --- */
 .chat-input-wrapper {
+  flex-shrink: 0; 
   padding: 16px 24px;
   transition: background-color 0.3s, border-color 0.3s;
+  
+  /* (SỬA) Giữ lại padding cho vùng an toàn iPhone */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
 /* Kiểu theme Sáng */
 .chat-input-wrapper[data-theme='light'] {
   border-top: 1px solid #f0f0f0;
-  background: #ffffff;
 }
 
 /* Kiểu theme Tối */
 .chat-input-wrapper[data-theme='dark'] {
   border-top: 1px solid #303030;
-  background: #1f1f1f;
 }
 
 /* --- Thanh nhập liệu bên trong --- */
 .chat-input-bar {
   display: flex;
   align-items: center;
-  /* border-radius: 12px; */
+  border-radius: 12px;
   padding: 8px;
   transition: background-color 0.3s;
+  /* Thêm viền nhẹ (thay vì viền focus) */
+  border: 1px solid transparent; 
 }
 
 .chat-input-bar[data-theme='light'] {
   background: #f1f3f5;
+  border-color: #f1f3f5;
 }
 
 .chat-input-bar[data-theme='dark'] {
   background: #2b2b2b;
+  border-color: #383838; /* Thêm viền tối */
 }
+
+/* Thêm style khi thanh input được focus */
+.chat-input-bar:focus-within {
+  border-color: #1677ff; /* Hiển thị viền xanh khi focus */
+  background-color: transparent; /* Tắt nền */
+}
+
 
 /* --- Các nút (Mic, Kẹp ghim) --- */
 .chat-input-button {
-  transition: color 0.3s;
+  transition: color 0.3s, opacity 0.3s;
+}
+
+/* (SỬA) Tăng độ đậm và kích thước icon */
+.chat-input-button .anticon {
+  font-size: 1.15rem; 
 }
 
 /* Màu nút theme Sáng */
 .chat-input-button[data-theme='light'] {
-  color: rgba(0, 0, 0, 0.65);
+  color: rgba(0, 0, 0, 0.55);
+}
+.chat-input-button[data-theme='light']:hover {
+  color: rgba(0, 0, 0, 0.85);
 }
 
 /* Màu nút theme Tối */
 .chat-input-button[data-theme='dark'] {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.55);
+}
+.chat-input-button[data-theme='dark']:hover {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Ưu tiên màu đỏ khi đang ghi âm */
 .chat-input-button[data-recording='true'] {
-  color: #f5222d !important; /* Dùng !important để ghi đè màu của theme */
+  color: #f5222d !important; 
 }
 
 
@@ -61,16 +86,25 @@
   background: transparent;
 }
 
-/* ... (Thêm vào cuối file CSS của bạn) ... */
+/* (SỬA) Gỡ bỏ HOÀN TOÀN viền/shadow mặc định của Antd khi focus */
+.chat-input-field.ant-input:focus,
+.chat-input-field.ant-input:focus-within,
+.chat-input-field.ant-input-focused {
+  box-shadow: none !important;
+  border: none !important;
+}
 
-/* (MỚI) Khu vực chứa các file chờ */
+
+/* --- Khu vực file chờ --- */
 .staged-files-container {
-  padding: 0 8px 12px 8px; /* Đệm ở trên thanh input */
+  padding: 0 8px 12px 8px; 
   border-bottom: 1px dashed;
   margin-bottom: 12px;
   transition: border-color 0.3s;
+  
+  max-height: 120px;
+  overflow-y: auto;
 }
-
 .staged-files-container[data-theme='light'] {
   border-color: #d9d9d9;
 }
@@ -78,16 +112,15 @@
   border-color: #424242;
 }
 
-/* (MỚI) Mỗi item file chờ */
+/* ... (toàn bộ CSS cho staged-file-item giữ nguyên) ... */
 .staged-file-item {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
   border-radius: 6px;
-  max-width: 200px; /* Giới hạn chiều rộng */
+  max-width: 200px; 
   transition: background-color 0.3s, color 0.3s;
 }
-
 .staged-file-item[data-theme='light'] {
   background-color: #e6f4ff;
   color: #1677ff;
@@ -96,8 +129,6 @@
   background-color: #111a2c;
   color: #a6c5ff;
 }
-
-/* (MỚI) Ảnh thumbnail của file ảnh */
 .staged-file-thumbnail {
   width: 24px;
   height: 24px;
@@ -105,27 +136,35 @@
   border-radius: 4px;
   margin-right: 8px;
 }
-
-/* (MỚI) Icon cho file thường */
 .staged-file-icon {
   font-size: 16px;
   margin-right: 8px;
 }
-
-/* (MỚI) Tên file */
 .staged-file-name {
   flex-grow: 1;
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis; /* Dấu ... nếu tên quá dài */
+  text-overflow: ellipsis; 
 }
-
-/* (MỚI) Nút xóa file (X) */
 .staged-file-remove {
   margin-left: 4px;
-  color: #8c8c8c; /* Màu xám nhẹ */
+  color: #8c8c8c; 
 }
 .staged-file-remove:hover {
-  color: #f5222d !important; /* Màu đỏ khi hover */
+  color: #f5222d !important; 
   background-color: rgba(245, 34, 45, 0.1) !important;
+}
+
+.chat-input-bar .ant-btn-primary {
+  height: 36px;
+  width: 36px;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.chat-input-bar .ant-btn-primary .anticon-send {
+  font-size: 16px;
 }
