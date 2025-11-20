@@ -11,17 +11,7 @@ router = APIRouter()
 @router.post("/chat/female-voice", response_model=TextToVoiceResponse)
 def text_to_female_voice(request: SimpleTextRequest):
     """
-    Convert text to speech with FEMALE voice (English - Clara)
-    Returns JSON with base64 encoded audio data
-
-    Example request:
-    {
-        "text": "Hello! Nice to meet you. Welcome to our service.",
-        "volume": 0,
-        "speed": 0,
-        "pitch": 0,
-        "format": "mp3"
-    }
+    Convert text to speech with female voice (Clara - English).
     """
     return service.text_to_female_voice(request)
 
@@ -29,17 +19,7 @@ def text_to_female_voice(request: SimpleTextRequest):
 @router.post("/chat/male-voice", response_model=TextToVoiceResponse)
 def text_to_male_voice(request: SimpleTextRequest):
     """
-    Convert text to speech with MALE voice (English - Matt)
-    Returns JSON with base64 encoded audio data
-
-    Example request:
-    {
-        "text": "Hello! Nice to meet you. Welcome to our service.",
-        "volume": 0,
-        "speed": 0,
-        "pitch": 0,
-        "format": "mp3"
-    }
+    Convert text to speech with male voice (Matt - English).
     """
     return service.text_to_male_voice(request)
 
@@ -47,8 +27,7 @@ def text_to_male_voice(request: SimpleTextRequest):
 @router.post("/chat/female-voice/audio")
 def text_to_female_voice_audio(request: SimpleTextRequest):
     """
-    Convert text to speech with FEMALE voice (English - Clara)
-    Returns audio file directly
+    Convert text to speech with female voice. Returns audio file directly.
     """
     result = service.text_to_female_voice(request)
 
@@ -69,8 +48,7 @@ def text_to_female_voice_audio(request: SimpleTextRequest):
 @router.post("/chat/male-voice/audio")
 def text_to_male_voice_audio(request: SimpleTextRequest):
     """
-    Convert text to speech with MALE voice (English - Matt)
-    Returns audio file directly
+    Convert text to speech with male voice. Returns audio file directly.
     """
     result = service.text_to_male_voice(request)
 
