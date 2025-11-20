@@ -1,0 +1,149 @@
+/* --- Lớp Sider chính --- */
+.app-sider {
+  height: 100vh;
+  /* Hiệu ứng chuyển động mượt mà khi đổi theme */
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.app-sider[data-theme='light'] {
+  background: #ffffff;
+  border-right: 1px solid #e9ecef;
+}
+
+.app-sider[data-theme='dark'] {
+  background: #1f1f1f;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Khu vực Logo (trên cùng) --- */
+.sider-logo-area {
+  padding: 24px;
+  text-align: center;
+  transition: border-color 0.3s;
+}
+
+.sider-logo-area[data-theme='light'] {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.sider-logo-area[data-theme='dark'] {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Style tĩnh cho Avatar và Icon */
+.sider-logo-avatar {
+  background-color: rgba(22, 119, 255, 0.1);
+}
+.sider-logo-avatar-icon {
+  color: #1677ff;
+}
+
+/* Chữ "InterviewAI" */
+.sider-logo-text {
+  font-weight: 700;
+  font-size: 18px;
+  transition: color 0.3s;
+}
+.sider-logo-text[data-theme='light'] {
+  color: #212529;
+}
+.sider-logo-text[data-theme='dark'] {
+  color: white;
+}
+
+/* --- Khu vực Menu (History) --- */
+.sider-menu-area {
+  /* Style động cho padding được xử lý bằng data-attribute */
+  transition: padding 0.3s ease;
+}
+.sider-menu-area[data-collapsed='true'] {
+  padding: 24px 8px;
+}
+.sider-menu-area[data-collapsed='false'] {
+  padding: 24px 16px;
+}
+
+/* Tiêu đề "HISTORY" */
+.sider-menu-header {
+  font-size: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  transition: color 0.3s;
+}
+.sider-menu-header[data-theme='light'] {
+  color: rgba(0, 0, 0, 0.45);
+}
+.sider-menu-header[data-theme='dark'] {
+  color: rgba(255, 255, 255, 0.5);
+}
+/* Style động cho căn lề */
+.sider-menu-header[data-collapsed='true'] {
+  justify-content: center;
+}
+.sider-menu-header[data-collapsed='false'] {
+  justify-content: space-between;
+}
+
+/* Nút thu/gọn sidebar */
+.sider-collapse-button {
+  transition: color 0.3s;
+}
+.sider-collapse-button[data-theme='light'] {
+  color: rgba(0, 0, 0, 0.65);
+}
+.sider-collapse-button[data-theme='dark'] {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Tùy chỉnh Menu của Antd */
+.sider-menu.ant-menu {
+  background: transparent;
+  border: none;
+}
+
+/* --- Tùy chỉnh Menu Item (Label) --- */
+.menu-item-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.menu-item-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+}
+
+/* Nút sửa (EditOutlined) */
+.menu-item-edit-button {
+  flex-shrink: 0;
+  transition: color 0.3s;
+}
+.menu-item-edit-button[data-theme='light'] {
+  color: rgba(0, 0, 0, 0.65);
+}
+.menu-item-edit-button[data-theme='dark'] {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.menu-item-edit-button {
+  flex-shrink: 0;
+  transition: color 0.3s;
+}
+.menu-item-edit-button[data-theme='light'] {
+  color: rgba(0, 0, 0, 0.65);
+}
+.menu-item-edit-button[data-theme='dark'] {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* (MỚI) Thêm class cho nút xóa */
+.menu-item-delete-button {
+  flex-shrink: 0;
+  /* Giữ màu đỏ 'danger' của Antd,
+     nhưng bạn có thể thêm transition nếu muốn */
+}
+

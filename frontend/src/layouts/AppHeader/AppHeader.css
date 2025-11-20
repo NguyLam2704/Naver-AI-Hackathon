@@ -1,0 +1,74 @@
+/* --- Lớp bao bọc Header chính --- */
+.app-header {
+  padding: 0 24px;
+  height: 89px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  line-height: normal;
+  /* Hiệu ứng chuyển động mượt mà khi đổi theme */
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+/* Kiểu theme Sáng */
+.app-header[data-theme='light'] {
+  background: #ffffff;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Kiểu theme Tối */
+.app-header[data-theme='dark'] {
+  background: #1f1f1f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Lớp nội dung (căn giữa 2 bên) --- */
+.app-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* --- Tiêu đề (VD: Interview for...) --- */
+.app-header-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 2px;
+  transition: color 0.3s;
+}
+
+.app-header-title[data-theme='light'] {
+  color: #212529;
+}
+.app-header-title[data-theme='dark'] {
+  color: white;
+}
+
+/* --- Tiêu đề phụ (VD: AI Assistant) --- */
+.app-header-subtitle {
+  font-size: 12px;
+  opacity: 0.65;
+  transition: color 0.3s;
+}
+
+.app-header-subtitle[data-theme='light'] {
+  color: rgba(0, 0, 0, 0.65);
+}
+.app-header-subtitle[data-theme='dark'] {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* --- Các nút icon (Chung) --- */
+.app-header-button {
+  transition: color 0.3s;
+}
+
+.app-header-button[data-theme='light'] {
+  color: #212529;
+}
+.app-header-button[data-theme='dark'] {
+  color: white;
+}
