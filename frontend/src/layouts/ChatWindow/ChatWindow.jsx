@@ -83,7 +83,7 @@ const ChatWindow = ({ messages, messagesEndRef, themeMode }) => {
             
             {/* Loading Dots */}
             {msg.sender === 'ai' && msg.isLoading && !msg.text && (
-               <div className="typing-indicator">
+               <div className="typing-indicator" data-theme={themeMode}>
                  <span></span>
                  <span></span>
                  <span></span>

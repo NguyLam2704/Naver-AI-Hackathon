@@ -11,7 +11,7 @@ const getApiBaseUrl = () => {
 
   // 2. Nếu không có biến môi trường, tự động detect
   if (window.location.hostname === 'localhost') {
-    return 'http://localhost:8000'; // Local backend
+    return 'http://localhost:8000/api'; // Local backend
   }
   
   // 3. Trên Vercel production (cùng domain)

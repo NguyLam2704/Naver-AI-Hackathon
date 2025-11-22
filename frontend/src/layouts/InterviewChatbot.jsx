@@ -12,7 +12,7 @@ import ChatInput from '../components/ChatInput/ChatInput';
 import './InterviewChatbot.css'; 
 
 
-import { Layout, ConfigProvider, theme, Grid, message, Modal, Upload, Button, Radio, Tabs, Input } from 'antd';
+import { Layout, ConfigProvider, theme, Grid, message, Modal, Upload, Button, Radio, Tabs, Input, Alert } from 'antd';
 import { UploadOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 import { useTheme } from '../hooks/useTheme';
@@ -35,6 +35,7 @@ const InterviewChatbot = () => {
   const [setupMode, setSetupMode] = useState('upload'); // 'upload' | 'topic'
   const [selectedTopic, setSelectedTopic] = useState('');
   const [fileList, setFileList] = useState([]); // State quản lý danh sách file và tiến trình upload
+  const [showBanner, setShowBanner] = useState(true);
 
   // --- GỌI CÁC CUSTOM HOOK ---
   
@@ -267,6 +268,11 @@ const InterviewChatbot = () => {
     setStagedFiles([]); 
     setFileList([]); // Clear file list UI
     handleNewChat(); // Gọi hàm gốc từ useChat
+    
+    // Mở lại modal setup cho session mới
+    setIsSetupComplete(false);
+    setSetupMode('upload');
+    setSelectedTopic('');
   };
   
   const handleVoiceToggleWrapper = () => {
@@ -384,6 +390,16 @@ const InterviewChatbot = () => {
         {/* <AppSider ... /> */}
 
         <Layout>
+          {showBanner && (
+            <Alert
+              message="Trang web hiện tại chỉ mới hỗ trợ interview bằng tiếng Anh."
+              type="info"
+              closable
+              onClose={() => setShowBanner(false)}
+              style={{ borderRadius: 0, textAlign: 'center' }}
+              banner
+            />
+          )}
           
           <AppHeader
             themeMode={themeMode}
