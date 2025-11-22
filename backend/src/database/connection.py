@@ -1,20 +1,30 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from psycopg2 import pool
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    from psycopg2 import pool
+except ImportError:
+    psycopg2 = None
+    RealDictCursor = None
+    pool = None
+
 from contextlib import contextmanager
 from config import get_settings
 
 settings = get_settings()
 
 # Create PostgreSQL connection pool (optional - for future use)
-try:
-    connection_pool = psycopg2.pool.SimpleConnectionPool(
-        1, 20, settings.database_url  # min and max connections
-    )
-    print("✅ Database connection pool created")
-except Exception as e:
-    print(f"⚠️  Database connection failed (optional): {e}")
-    connection_pool = None
+connection_pool = None
+
+if psycopg2:
+    try:
+        connection_pool = psycopg2.pool.SimpleConnectionPool(
+            1, 20, settings.database_url  # min and max connections
+        )
+        print("✅ Database connection pool created")
+    except Exception as e:
+        print(f"⚠️  Database connection failed (optional): {e}")
+else:
+    print("⚠️  psycopg2 not installed. Database features disabled.")
 
 
 @contextmanager

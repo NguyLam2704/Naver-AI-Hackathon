@@ -1,11 +1,3 @@
-export const interviewQuestions = [
-  "Hãy giới thiệu về bản thân bạn?",
-  "Tại sao bạn muốn làm việc tại công ty này?",
-  "Điểm mạnh và điểm yếu của bạn là gì?",
-  "Kể về một dự án thành công mà bạn đã thực hiện?",
-  "Bạn xử lý xung đột trong team như thế nào?"
-];
-
 // Cài đặt SpeechRecognition
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 export let recognition = null;

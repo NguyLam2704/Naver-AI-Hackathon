@@ -15,12 +15,11 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Database - PostgreSQL
-    database_url: str = (
-        "postgresql://postgres:postgres@localhost:5432/naver_ai_hackathon"
-    )
+    # Use a default value that won't crash if not set, or make it Optional
+    database_url: str = "sqlite:///./test.db"
 
     # CORS
-    cors_origins: list = ["http://localhost:3000", "http://localhost:3001"]
+    cors_origins: list = ["http://localhost:3000", "http://localhost:3001", "*"]
 
     # API
     api_v1_prefix: str = "/api/v1"

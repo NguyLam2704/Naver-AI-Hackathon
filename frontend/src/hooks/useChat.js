@@ -1,32 +1,31 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { message } from 'antd';
-import { interviewQuestions, getCurrentTime, defaultWelcomeMessage } from '../utils/chatHelpers';
+import { getCurrentTime, defaultWelcomeMessage } from '../utils/chatHelpers';
+import axios from 'axios';
 
-// Hàm lấy state ban đầu từ localStorage
-const getInitialChatSessions = () => {
-  if (typeof window !== 'undefined') {
-    const savedChats = localStorage.getItem('chatSessions');
-    try {
-      return savedChats ? JSON.parse(savedChats) : [];
-    } catch (e) {
-      console.error("Lỗi parse JSON từ localStorage:", e);
-      return [];
-    }
+const getApiBaseUrl = () => {
+  // 1. Ưu tiên lấy từ biến môi trường (.env)
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
   }
-  return [];
-};
 
-const getInitialActiveChatId = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('activeChatId');
+  // 2. Nếu không có biến môi trường, tự động detect
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:8000'; // Local backend
   }
-  return null;
+  
+  // 3. Trên Vercel production (cùng domain)
+  return '/api'; 
 };
 
 export const useChat = () => {
-  const [chatSessions, setChatSessions] = useState(getInitialChatSessions);
-  const [activeChatId, setActiveChatId] = useState(getInitialActiveChatId);
+  // (SỬA) Xóa logic localStorage, chỉ dùng state tạm thời
+  const [chatSessions, setChatSessions] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
   const [renamingChatId, setRenamingChatId] = useState(null);
+  const [voiceGender, setVoiceGender] = useState('female'); // 'female' | 'male'
+  const [isInterviewFinished, setIsInterviewFinished] = useState(false); // State kết thúc phỏng vấn
+  const [interviewResult, setInterviewResult] = useState(""); // Kết quả phỏng vấn
   const aiResponseTimeoutRef = useRef(null);
 
   // --- LOGIC MEMOIZED ---
@@ -36,71 +35,234 @@ export const useChat = () => {
   );
   const messages = useMemo(() => activeChat?.messages || [], [activeChat]);
 
-  // --- EFFECTS ---
-  // Lưu vào localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem('chatSessions', JSON.stringify(chatSessions));
-    } catch (error) {
-      console.error("LỖI QUOTA: Không thể lưu chat sessions:", error);
-      message.error("Lỗi: Dung lượng lưu trữ đã đầy! Ảnh có thể không được lưu.");
-    }
-    if (activeChatId) {
-      localStorage.setItem('activeChatId', activeChatId);
-    }
-  }, [chatSessions, activeChatId]); 
+  // (SỬA) Xóa useEffect lưu localStorage
 
-  // Khởi tạo (chỉ chạy 1 lần)
+  // Khởi tạo (chỉ chạy 1 lần) - Tạo session mới luôn
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     if (chatSessions.length === 0) {
       const newChatId = crypto.randomUUID();
       setChatSessions([
         { 
           id: newChatId, 
-          title: 'New Chat', 
+          title: 'Interview Session', 
           messages: [defaultWelcomeMessage], 
           currentQuestion: 0 
         }
       ]);
       setActiveChatId(newChatId);
-    } else if (!activeChatId || !chatSessions.find(c => c.id === activeChatId)) {
-      setActiveChatId(chatSessions[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   // --- HANDLERS ---
-  const triggerAiResponse = useCallback(() => {
-    if (aiResponseTimeoutRef.current) {
-      clearTimeout(aiResponseTimeoutRef.current);
-    }
-    aiResponseTimeoutRef.current = setTimeout(() => {
-      let aiResponse = "Câu trả lời hay đấy! ";
+  const uploadFile = useCallback(async (file, onProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await axios.post(`${getApiBaseUrl()}/files/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percentCompleted);
+        }
+      }
+    });
+    
+    return response.data;
+  }, []);
+
+  const triggerAiResponse = useCallback(async (userMessage, stagedFiles = []) => {
+    if (!activeChatId) return;
+
+    // 1. Chuẩn bị message placeholder cho AI
+    const aiMessageId = crypto.randomUUID();
+    const aiMessage = { 
+      id: aiMessageId,
+      sender: 'ai', 
+      text: '', 
+      time: getCurrentTime(),
+      isLoading: true,
+      audioUrl: null // Thêm field audioUrl
+    };
+
+    setChatSessions(prevSessions => 
+      prevSessions.map(chat => {
+        if (chat.id === activeChatId) {
+          return {
+            ...chat,
+            messages: [...chat.messages, aiMessage]
+          };
+        }
+        return chat;
+      })
+    );
+
+    try {
+      // 2. Upload files nếu có
+      const fileUris = [];
+      if (stagedFiles && stagedFiles.length > 0) {
+        for (const file of stagedFiles) {
+          if (file.uri) {
+             // Đã có URI (đã upload trước đó)
+             fileUris.push(file.uri);
+          } else if (file.data) {
+            // Chưa có URI, upload từ base64 (fallback)
+            const blob = await (await fetch(file.data)).blob();
+            const formData = new FormData();
+            formData.append('file', blob, file.name);
+
+            const uploadRes = await fetch(`${getApiBaseUrl()}/files/upload`, {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (uploadRes.ok) {
+              const data = await uploadRes.json();
+              if (data.file_uri) {
+                fileUris.push(data.file_uri);
+              }
+            } else {
+              console.error("Upload failed", await uploadRes.text());
+              message.error(`Lỗi upload file: ${file.name}`);
+            }
+          }
+        }
+      }
+
+      // 3. Gọi API Chat Stream
+      const formData = new FormData();
+      formData.append('message', userMessage);
+      if (fileUris.length > 0) {
+        formData.append('file_uris', JSON.stringify(fileUris));
+      }
+      formData.append('session_id', activeChatId);
+
+      const response = await fetch(`${getApiBaseUrl()}/chat/stream`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
+      // 4. Xử lý Stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let aiResponseText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.replace('data: ', '');
+            if (jsonStr === '[DONE]') break; 
+
+            try {
+              const data = JSON.parse(jsonStr);
+              
+              if (data.type === 'chunk') {
+                aiResponseText += data.text;
+                
+                // Update UI streaming
+                setChatSessions(prevSessions => 
+                  prevSessions.map(chat => {
+                    if (chat.id === activeChatId) {
+                      const updatedMessages = chat.messages.map(msg => {
+                        if (msg.id === aiMessageId) {
+                          return { ...msg, text: aiResponseText, isLoading: false };
+                        }
+                        return msg;
+                      });
+                      return { ...chat, messages: updatedMessages };
+                    }
+                    return chat;
+                  })
+                );
+              } else if (data.type === 'error') {
+                message.error(`AI Error: ${data.message}`);
+              } else if (data.type === 'done') {
+                 // Stream finished
+                 if (aiResponseText.includes('[Thank you for your time]')) {
+                    setIsInterviewFinished(true);
+                    setInterviewResult(aiResponseText);
+                 }
+              }
+            } catch (e) {
+              console.error("Error parsing SSE:", e);
+            }
+          }
+        }
+      }
+
+      // 5. Gọi TTS sau khi stream xong
+      if (aiResponseText.trim()) {
+        try {
+          const ttsEndpoint = voiceGender === 'male' 
+            ? `${getApiBaseUrl()}/chat/male-voice/audio`
+            : `${getApiBaseUrl()}/chat/female-voice/audio`;
+          
+          const ttsRes = await fetch(ttsEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: aiResponseText })
+          });
+
+          if (ttsRes.ok) {
+            const audioBlob = await ttsRes.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            setChatSessions(prevSessions => 
+              prevSessions.map(chat => {
+                if (chat.id === activeChatId) {
+                  const updatedMessages = chat.messages.map(msg => {
+                    if (msg.id === aiMessageId) {
+                      return { ...msg, audioUrl: audioUrl };
+                    }
+                    return msg;
+                  });
+                  return { ...chat, messages: updatedMessages };
+                }
+                return chat;
+              })
+            );
+          } else {
+            console.error("TTS Failed", await ttsRes.text());
+          }
+        } catch (ttsError) {
+          console.error("TTS Error:", ttsError);
+        }
+      }
+
+    } catch (error) {
+      console.error("Chat Error:", error);
+      message.error("Có lỗi xảy ra khi kết nối với AI.");
+      
+      // Update message to show error
       setChatSessions(prevSessions => 
         prevSessions.map(chat => {
           if (chat.id === activeChatId) {
-            let nextQuestion = chat.currentQuestion;
-            if (nextQuestion < interviewQuestions.length - 1) {
-              nextQuestion = nextQuestion + 1;
-              aiResponse += interviewQuestions[nextQuestion];
-            } else {
-              aiResponse += "Cảm ơn bạn đã hoàn thành buổi phỏng vấn. Kết quả của bạn rất tốt! 🎉";
-            }
-            const aiMessage = { sender: 'ai', text: aiResponse, time: getCurrentTime() };
-            return {
-              ...chat,
-              messages: [...chat.messages, aiMessage],
-              currentQuestion: nextQuestion
-            };
+            const updatedMessages = chat.messages.map(msg => {
+              if (msg.id === aiMessageId) {
+                return { ...msg, text: "Xin lỗi, tôi đang gặp sự cố kết nối.", isLoading: false, isError: true };
+              }
+              return msg;
+            });
+            return { ...chat, messages: updatedMessages };
           }
           return chat;
         })
       );
-      aiResponseTimeoutRef.current = null;
-    }, 1500);
-  }, [activeChatId]); 
+    }
+  }, [activeChatId, voiceGender]); 
 
   const handleRenameChat = (chatId, newTitle) => {
     if (!newTitle.trim()) {
@@ -166,6 +328,11 @@ export const useChat = () => {
     triggerAiResponse,
     handleRenameChat,
     handleNewChat,
-    handleDeleteChat
+    handleDeleteChat,
+    voiceGender,
+    setVoiceGender,
+    isInterviewFinished,
+    interviewResult,
+    uploadFile
   };
 };

@@ -1,5 +1,7 @@
 import { Space, Avatar } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import './ChatWindow.css';
 
@@ -42,19 +44,50 @@ const ChatWindow = ({ messages, messagesEndRef, themeMode }) => {
                 data-sender={msg.sender}
               />
             ) : (
-              <div
-                // (SỬA) Kết hợp className động (màu sắc) và className tĩnh (bố cục)
-                className={`
-                  chat-text-bubble
-                  ${msg.sender === 'user'
-                    ? (themeMode === 'dark' ? 'chat-bubble-user-dark' : 'chat-bubble-user')
-                    : (themeMode === 'dark' ? 'chat-bubble-ai-dark' : 'chat-bubble-ai-light')}
-                `}
-                // (SỬA) Thêm data-sender để xử lý bo góc
-                data-sender={msg.sender}
-              >
-                {msg.text}
+              // Chỉ hiển thị bubble nếu có text HOẶC (không phải đang loading)
+              // Nếu đang loading mà chưa có text thì ẩn bubble đi (để hiện dots)
+              (msg.text || !msg.isLoading) && (
+                <div
+                  // (SỬA) Kết hợp className động (màu sắc) và className tĩnh (bố cục)
+                  className={`
+                    chat-text-bubble
+                    ${msg.sender === 'user'
+                      ? (themeMode === 'dark' ? 'chat-bubble-user-dark' : 'chat-bubble-user')
+                      : (themeMode === 'dark' ? 'chat-bubble-ai-dark' : 'chat-bubble-ai-light')}
+                  `}
+                  // (SỬA) Thêm data-sender để xử lý bo góc
+                  data-sender={msg.sender}
+                >
+                  {msg.sender === 'ai' ? (
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({node, ...props}) => <p style={{margin: 0}} {...props} />
+                      }}
+                    >
+                      {msg.text ? msg.text.replace(/\[Thank you for your time\]/g, '') : ''}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.text
+                  )}
+                </div>
+              )
+            )}
+
+            {/* Audio Player for AI */}
+            {msg.sender === 'ai' && msg.audioUrl && (
+              <div className="chat-audio-player" data-theme={themeMode}>
+                <audio controls autoPlay src={msg.audioUrl} />
               </div>
+            )}
+            
+            {/* Loading Dots */}
+            {msg.sender === 'ai' && msg.isLoading && !msg.text && (
+               <div className="typing-indicator">
+                 <span></span>
+                 <span></span>
+                 <span></span>
+               </div>
             )}
 
             <div

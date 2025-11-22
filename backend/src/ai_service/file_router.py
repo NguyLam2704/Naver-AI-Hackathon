@@ -9,7 +9,8 @@ import ai_service.file_service as file_service
 router = APIRouter()
 
 # Directory to store uploaded files temporarily
-UPLOAD_DIR = "uploads"
+# On Vercel (Lambda), only /tmp is writable
+UPLOAD_DIR = "/tmp/uploads" if os.getenv("VERCEL") else "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 

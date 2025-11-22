@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add current directory to sys.path so imports work correctly
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -15,15 +21,28 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
-    # Startup: Create database tables
-    init_db()
+    # Startup: Create database tables (skip if running on Vercel)
+    import os
+
+    # Try to initialize database, but don't fail if it fails (e.g. on Vercel without DB)
+    try:
+        if not os.getenv("VERCEL"):
+            init_db()
+            print(f"📊 PostgreSQL Database initialized")
+    except Exception as e:
+        print(f"⚠️ Database initialization failed (running without DB): {e}")
+
     print(f"🚀 {settings.app_name} starting up...")
-    print(f"📊 PostgreSQL Database initialized")
     print(f"🎤 AI Service ready")
     yield
     # Shutdown
     print(f"👋 {settings.app_name} shutting down...")
 
+
+# Determine root_path based on environment
+# We will handle routing prefixes explicitly in the app structure
+# instead of relying on root_path which can be tricky with Vercel rewrites
+root_path = ""
 
 # Create FastAPI app
 app = FastAPI(
@@ -31,6 +50,7 @@ app = FastAPI(
     version=settings.app_version,
     debug=settings.debug,
     lifespan=lifespan,
+    root_path=root_path,
 )
 
 # Configure CORS
@@ -44,7 +64,7 @@ app.add_middleware(
 
 
 # Health check endpoint
-@app.get("/")
+@app.get("/api")
 async def root():
     """Root endpoint"""
     return {
@@ -54,7 +74,7 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     return {
@@ -62,22 +82,22 @@ async def health_check():
         "service": "AI Interview Service",
         "version": settings.app_version,
         "endpoints": {
-            "chat_stream": "/chat/stream (supports file upload or file URIs)",
-            "clear_session": "/chat/session/{session_id}",
-            "female_voice": "/chat/female-voice",
-            "male_voice": "/chat/male-voice",
-            "file_upload": "/files/upload (upload files to get URI)",
-            "list_files": "/files (list all uploaded files)",
-            "get_file": "/files/{file_name} (get file metadata)",
-            "delete_file": "/files/{file_name} (delete file)",
+            "chat_stream": "/api/chat/stream (supports file upload or file URIs)",
+            "clear_session": "/api/chat/session/{session_id}",
+            "female_voice": "/api/chat/female-voice",
+            "male_voice": "/api/chat/male-voice",
+            "file_upload": "/api/files/upload (upload files to get URI)",
+            "list_files": "/api/files (list all uploaded files)",
+            "get_file": "/api/files/{file_name} (get file metadata)",
+            "delete_file": "/api/files/{file_name} (delete file)",
         },
     }
 
 
 # AI Service routers
-app.include_router(ai_voice_router, tags=["AI Service - Voice"])
-app.include_router(ai_chat_router, tags=["AI Service - Chat"])
-app.include_router(ai_file_router, tags=["AI Service - Files"])
+app.include_router(ai_voice_router, prefix="/api", tags=["AI Service - Voice"])
+app.include_router(ai_chat_router, prefix="/api", tags=["AI Service - Chat"])
+app.include_router(ai_file_router, prefix="/api", tags=["AI Service - Files"])
 
 
 if __name__ == "__main__":
