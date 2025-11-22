@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./test.db"
 
     # CORS
-    cors_origins: list = ["http://localhost:3000", "http://localhost:3001", "*"]
+    # Remove "*" because it conflicts with allow_credentials=True in CORSMiddleware
+    cors_origins: list = ["http://localhost:3000", "http://localhost:3001"]
 
     # API
     api_v1_prefix: str = "/api/v1"
