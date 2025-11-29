@@ -5,12 +5,18 @@ export const useSpeech = (handleSend, stagedFiles) => {
   const [input, setInput] = useState('');
   const inputRef = React.useRef(input);
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false); // Track recording state reliably
   const silenceTimeoutRef = useRef(null);
 
   // Đồng bộ inputRef
   useEffect(() => {
     inputRef.current = input;
   }, [input]);
+
+  // Đồng bộ isRecordingRef
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
 
   // useEffect cho Speech Recognition
   useEffect(() => {
@@ -24,7 +30,13 @@ export const useSpeech = (handleSend, stagedFiles) => {
     };
 
     if (isRecording) {
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (error) {
+        // Ignore error if recognition is already started
+        console.warn('Recognition already started or error:', error);
+      }
+      
       recognition.onresult = (event) => {
         clearSilenceTimeout(); 
         let interim_transcript = '';
@@ -55,18 +67,45 @@ export const useSpeech = (handleSend, stagedFiles) => {
       recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
         clearSilenceTimeout();
-        setIsRecording(false);
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          setIsRecording(false);
+        }
       };
       recognition.onend = () => {
         clearSilenceTimeout();
-        setIsRecording(false);
+        // Use ref to get current recording state, not closure value
+        if (isRecordingRef.current) {
+          // Restart if still recording (handle auto-stop)
+          try {
+            recognition.start();
+          } catch (error) {
+            console.warn('Cannot restart recognition:', error);
+            setIsRecording(false);
+          }
+        }
       };
     } else {
-      recognition.stop();
+      // Clear all event handlers when stopping
+      recognition.onresult = null;
+      recognition.onspeechend = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      
+      try {
+        recognition.stop();
+      } catch (error) {
+        console.warn('Recognition already stopped:', error);
+      }
       clearSilenceTimeout();
     }
     return () => {
-      if (recognition) recognition.stop();
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (error) {
+          // Ignore
+        }
+      }
       clearSilenceTimeout();
     };
   }, [isRecording, stagedFiles, handleSend]); 

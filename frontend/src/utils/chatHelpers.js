@@ -5,7 +5,7 @@ if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = 'vi-VN';
+  recognition.lang = 'en-US'; // Changed to English for better accuracy
 }
 
 // Hàm lấy thời gian
@@ -15,7 +15,8 @@ export const getCurrentTime = () => {
 
 // Tin nhắn chào mừng
 export const defaultWelcomeMessage = { 
-  sender: 'ai', 
-  text: 'Xin chào! Tôi là AI Interview Assistant. Hãy bắt đầu buổi phỏng vấn của bạn.', 
-  time: getCurrentTime() 
+sender: 'ai', 
+  // Sửa thành tiếng Anh để đồng bộ với "Language Constraint" của Prompt
+  text: "Hello. I am your AI Technical Recruiter. Please paste the Job Description (JD) so we can define the standard bar for this interview.", 
+  time: getCurrentTime()
 };

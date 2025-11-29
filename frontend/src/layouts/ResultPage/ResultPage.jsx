@@ -2,6 +2,8 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Card, Typography, Result, Divider } from 'antd';
 import { HomeOutlined, ReloadOutlined, FileTextOutlined } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './ResultPage.css';
 
 const { Title, Paragraph, Text } = Typography;
@@ -32,11 +34,9 @@ const ResultPage = () => {
         <div className="result-content">
           <Title level={4}>Chi tiết đánh giá:</Title>
           <div className="markdown-content">
-            {formattedText.split('\n').map((line, index) => (
-              <Paragraph key={index}>
-                {line}
-              </Paragraph>
-            ))}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {formattedText}
+            </ReactMarkdown>
           </div>
         </div>
 
