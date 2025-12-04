@@ -9,3 +9,6 @@ aiofiles==23.2.1
 python-multipart==0.0.6
 requests==2.31.0
 mangum==0.17.0
+deepgram-sdk==5.3.0
+pydub==0.25.1
+websockets==14.2
