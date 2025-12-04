@@ -1,20 +1,23 @@
-import sys
 import os
-
+import sys
 # Add current directory to sys.path so imports work correctly
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from fastapi import FastAPI
+import requests 
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
 from config import get_settings
 from database import init_db
 from ai_service.router import router as ai_voice_router
 from ai_service.chat_router import router as ai_chat_router
 from ai_service.file_router import router as ai_file_router
-
-
+from pydub import AudioSegment
+from io import BytesIO
+import asyncio
+from deepgram.extensions.types.sockets import ListenV2MediaMessage
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, HTTPException
+from deepgram import AsyncDeepgramClient
+from deepgram.core.events import EventType
+from deepgram.extensions.types.sockets import ListenV2SocketClientResponse
 settings = get_settings()
 
 
@@ -93,8 +96,61 @@ async def health_check():
             "delete_file": "/api/files/{file_name} (delete file)",
         },
     }
+DEEPGRAM_API_KEY = "6517ef8eeef10b97b9210f377daae8cb31134a96"
 
+def webm_to_pcm16(blob: bytes) -> bytes:
+    audio = AudioSegment.from_file(BytesIO(blob), format="webm")
+    audio = audio.set_channels(1).set_frame_rate(16000)
+    pcm16 = audio.raw_data
+    return pcm16
 
+@app.websocket("/api/ws/deepgram")
+async def deepgram_proxy(ws: WebSocket):
+    await ws.accept()
+    api_key = settings.deepgram_api_key
+    dg = AsyncDeepgramClient(api_key=api_key)
+
+    async with dg.listen.v2.connect(
+        model="flux-general-en",
+        encoding="linear16",
+        sample_rate=16000
+    ) as conn:
+
+        def on_message(msg: ListenV2SocketClientResponse):
+            # if hasattr(msg, "event") and msg.event == 'EndOfTurn':
+            transcript = ""
+            if hasattr(msg, "transcript") and msg.transcript:
+                transcript = msg.transcript
+            is_final = (hasattr(msg, "event") and msg.event == 'EndOfTurn')
+            response_data = {
+            "text": transcript,
+            "is_final": is_final
+            }
+            asyncio.create_task(ws.send_json(response_data))
+
+        conn.on(EventType.OPEN, lambda _: print("Deepgram connected"))
+        conn.on(EventType.MESSAGE, on_message)
+        conn.on(EventType.ERROR, lambda e: print("Deepgram error:", e))
+        conn.on(EventType.CLOSE, lambda _: print("Deepgram closed"))
+
+        task = asyncio.create_task(conn.start_listening())
+
+        try:
+            while True:
+                message = await ws.receive()
+                if message["type"] == "websocket.disconnect":
+                    break
+
+                if "bytes" in message and message["bytes"]:
+                    await conn._send(message["bytes"])
+                elif "text" in message and message["text"] == "flush":
+                    await conn.finish()
+
+        except Exception as e:
+            print("WebSocket error:", e)
+        finally:
+            task.cancel()
+            # await ws.close()
 # AI Service routers
 app.include_router(ai_voice_router, prefix="/api", tags=["AI Service - Voice"])
 app.include_router(ai_chat_router, prefix="/api", tags=["AI Service - Chat"])

@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # Gemini API
     gemini_api_key: str = ""
 
+    # Deepgram API
+    deepgram_api_key: str = ""
     class Config:
         env_file = str(ENV_FILE)
         env_file_encoding = "utf-8"
