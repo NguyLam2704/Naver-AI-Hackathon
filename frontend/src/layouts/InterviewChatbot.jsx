@@ -137,16 +137,16 @@ const InterviewChatbot = () => {
     let filesToSend = [];
 
     if (setupMode === 'upload' && stagedFiles.length > 0) {
-        initialUserMessage = `Đã tải lên CV/JD: ${stagedFiles.map(f => f.name).join(', ')}`;
-        aiPrompt = "Đây là hồ sơ của tôi (CV/JD). Hãy bắt đầu phỏng vấn tôi dựa trên thông tin này. Xin chào.";
+        initialUserMessage = `Uploaded CV/JD: ${stagedFiles.map(f => f.name).join(', ')}`;
+        aiPrompt = "This is my CV/JD. Please start the interview based on this information. Hello.";
         filesToSend = stagedFiles;
     } else if (setupMode === 'topic' && selectedTopic.trim()) {
-        initialUserMessage = `Đã chọn chủ đề phỏng vấn: ${selectedTopic}`;
-        aiPrompt = `Tôi muốn phỏng vấn về chủ đề: ${selectedTopic}. Hãy bắt đầu phỏng vấn tôi. Xin chào.`;
+        initialUserMessage = `Selected interview topic: ${selectedTopic}`;
+        aiPrompt = `I want to be interviewed on the topic: ${selectedTopic}. Please start the interview. Hello.`;
     } else {
         // Fallback
-        initialUserMessage = "Xin chào, tôi đã sẵn sàng.";
-        aiPrompt = "Chào bạn, tôi đã sẵn sàng phỏng vấn. Hãy bắt đầu.";
+        initialUserMessage = "Hello, I am ready.";
+        aiPrompt = "Hello, I am ready for the interview. Let's start.";
     }
 
     // 1. Hiển thị tin nhắn của User (Fake UI message)
