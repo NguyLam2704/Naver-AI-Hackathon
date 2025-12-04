@@ -96,7 +96,6 @@ async def health_check():
             "delete_file": "/api/files/{file_name} (delete file)",
         },
     }
-DEEPGRAM_API_KEY = "6517ef8eeef10b97b9210f377daae8cb31134a96"
 
 def webm_to_pcm16(blob: bytes) -> bytes:
     audio = AudioSegment.from_file(BytesIO(blob), format="webm")

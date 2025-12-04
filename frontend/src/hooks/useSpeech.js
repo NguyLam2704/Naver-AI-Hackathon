@@ -27,7 +27,7 @@ export const useSpeech = () => {
   }
   
   // 3. Trên Vercel production (cùng domain)
-  return '/api'; 
+  return `${window.location.host}/api`; 
 };
   // 3. Gộp văn bản hiển thị
   const input = useMemo(() => {
