@@ -26,8 +26,20 @@ export const useSpeech = () => {
 
     if (mediaRecorderRef.current) {
       try {
-        if (mediaRecorderRef.current.stop) {
-          mediaRecorderRef.current.stop();
+        const { processor, source, audioContext, stream } = mediaRecorderRef.current;
+        
+        if (processor) {
+          processor.disconnect();
+          processor.onaudioprocess = null;
+        }
+        if (source) {
+          source.disconnect();
+        }
+        if (stream) {
+          stream.getTracks().forEach(t => t.stop());
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+          audioContext.close();
         }
       } catch (err) {
         console.warn("Cleanup error:", err);
@@ -37,7 +49,7 @@ export const useSpeech = () => {
 
     if (wsRef.current) {
       try {
-        if (wsRef.current.readyState === WebSocket.OPEN) {
+        if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
           wsRef.current.close();
         }
       } catch (err) {
@@ -51,6 +63,9 @@ export const useSpeech = () => {
   }, []);
 
   const startRecording = useCallback(async () => {
+    // Đảm bảo cleanup trước khi bắt đầu session mới
+    cleanup();
+
     try {
       // ⚠️ QUAN TRỌNG: Thay YOUR_DEEPGRAM_API_KEY bằng key thật của bạn
       const DEEPGRAM_API_KEY = process.env.REACT_APP_DEEPGRAM_API_KEY;
@@ -68,9 +83,17 @@ export const useSpeech = () => {
 
       const socketUrl = `wss://api.deepgram.com/v2/listen?${params.toString()}`;
       
-      wsRef.current = new WebSocket(socketUrl, ["token", DEEPGRAM_API_KEY]);
+      const socket = new WebSocket(socketUrl, ["token", DEEPGRAM_API_KEY]);
+      wsRef.current = socket;
 
-      wsRef.current.onopen = async () => {
+      socket.onopen = async () => {
+        // Nếu socket đã thay đổi (do user bấm stop/start nhanh), hủy setup này
+        if (wsRef.current !== socket) {
+            console.log("🔌 Socket changed, aborting setup");
+            socket.close();
+            return;
+        }
+
         console.log("🟢 Connected to Deepgram Flux");
         
         try {
@@ -85,12 +108,20 @@ export const useSpeech = () => {
           });
           
           // Tạo AudioContext để chuyển đổi sang PCM linear16
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
           const audioContext = new AudioContext({ sampleRate: 16000 });
+
+          // Resume AudioContext if suspended (browser policy)
+          if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+          }
+
           const source = audioContext.createMediaStreamSource(stream);
           const processor = audioContext.createScriptProcessor(4096, 1, 1);
           
           processor.onaudioprocess = (e) => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
+            // Chỉ gửi data nếu socket này vẫn là socket hiện tại và đang mở
+            if (wsRef.current === socket && socket.readyState === WebSocket.OPEN) {
               const inputData = e.inputBuffer.getChannelData(0);
               
               // Chuyển Float32 sang Int16 (PCM linear16)
@@ -100,7 +131,7 @@ export const useSpeech = () => {
                 pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
               }
               
-              wsRef.current.send(pcmData.buffer);
+              socket.send(pcmData.buffer);
             }
           };
           
@@ -113,28 +144,14 @@ export const useSpeech = () => {
             audioContext,
             processor,
             source,
-            stop: () => {
-              try {
-                processor.disconnect();
-                source.disconnect();
-                // Chỉ đóng nếu chưa đóng
-                if (audioContext.state !== 'closed') {
-                  audioContext.close();
-                }
-                stream.getTracks().forEach(t => t.stop());
-              } catch (err) {
-                console.warn("Cleanup warning:", err);
-              }
-            },
-            state: "recording"
           };
           
           // KeepAlive cho Flux
           keepAliveIntervalRef.current = setInterval(() => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              wsRef.current.send(new Uint8Array(0));
+            if (wsRef.current === socket && socket.readyState === WebSocket.OPEN) {
+              socket.send(new Uint8Array(0));
             }
-          }, 8000);
+          }, 3000);
           
           setIsRecording(true);
           console.log("🎤 Recording started");
@@ -146,11 +163,11 @@ export const useSpeech = () => {
         }
       };
 
-      wsRef.current.onmessage = (event) => {
+      socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           
-          console.log("📩", data.event, ":", data.transcript);
+          // console.log("📩", data.event, ":", data.transcript);
           
           const transcript = data.transcript?.trim();
           
@@ -159,25 +176,9 @@ export const useSpeech = () => {
           // Xử lý theo loại event
           switch (data.event) {
             case "StartOfTurn":
-              // Bắt đầu câu mới
-              console.log("🎬 Start of turn");
-              setInterimTranscript(transcript);
-              break;
-              
             case "Update":
-              // Cập nhật liên tục (interim results)
-              setInterimTranscript(transcript);
-              break;
-              
             case "EagerEndOfTurn":
-              // Deepgram nghĩ câu đã kết thúc (nhưng chưa chắc)
-              console.log("⏸️ Eager end (might resume)");
-              setInterimTranscript(transcript);
-              break;
-              
             case "TurnResumed":
-              // Người dùng nói tiếp sau khi tạm dừng
-              console.log("▶️ Turn resumed");
               setInterimTranscript(transcript);
               break;
               
@@ -193,7 +194,8 @@ export const useSpeech = () => {
               
             default:
               // Các event khác (nếu có)
-              console.log("ℹ️ Other event:", data.event);
+              // console.log("ℹ️ Other event:", data.event);
+              break;
           }
           
         } catch (e) {
@@ -201,13 +203,15 @@ export const useSpeech = () => {
         }
       };
 
-      wsRef.current.onerror = (err) => {
+      socket.onerror = (err) => {
         console.error("❌ WebSocket Error:", err);
-        alert("Lỗi kết nối Deepgram. Kiểm tra API Key!");
+        if (socket.readyState !== WebSocket.CLOSED) {
+            // alert("Lỗi kết nối Deepgram. Kiểm tra API Key!");
+        }
         cleanup();
       };
 
-      wsRef.current.onclose = (event) => {
+      socket.onclose = (event) => {
         console.log("🔴 WebSocket Closed:", event.code, event.reason);
         if (event.code === 1008) {
           alert("❌ API Key không hợp lệ!");
@@ -223,11 +227,6 @@ export const useSpeech = () => {
   }, [cleanup]);
 
   const stopRecording = useCallback(() => {
-    // Dừng audio processor trước
-    if (mediaRecorderRef.current?.stop) {
-      mediaRecorderRef.current.stop();
-    }
-    
     // Gửi CloseStream cho Deepgram
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "CloseStream" }));
@@ -241,10 +240,10 @@ export const useSpeech = () => {
     }
   }, [cleanup]);
 
-  const handleVoiceToggle = () => {
+  const handleVoiceToggle = useCallback(() => {
     if (isRecording) stopRecording();
     else startRecording();
-  };
+  }, [isRecording, startRecording, stopRecording]);
 
   useEffect(() => {
     return () => cleanup();
@@ -257,9 +256,9 @@ export const useSpeech = () => {
     setIsRecording, 
     handleVoiceToggle,
     inputRef,
-    clearTranscript: () => {
+    clearTranscript: useCallback(() => {
       setFinalTranscript("");
       setInterimTranscript("");
-    }
+    }, [])
   };
 };
