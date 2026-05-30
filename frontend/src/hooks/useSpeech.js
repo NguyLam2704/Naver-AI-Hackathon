@@ -243,6 +243,7 @@ export const useSpeech = () => {
   const handleVoiceToggle = useCallback(() => {
     if (isRecording) stopRecording();
     else startRecording();
+    return true;
   }, [isRecording, startRecording, stopRecording]);
 
   useEffect(() => {
