@@ -1,11 +1,3 @@
-export const interviewQuestions = [
-  "Hãy giới thiệu về bản thân bạn?",
-  "Tại sao bạn muốn làm việc tại công ty này?",
-  "Điểm mạnh và điểm yếu của bạn là gì?",
-  "Kể về một dự án thành công mà bạn đã thực hiện?",
-  "Bạn xử lý xung đột trong team như thế nào?"
-];
-
 // Cài đặt SpeechRecognition
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 export let recognition = null;
@@ -13,7 +5,7 @@ if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = 'vi-VN';
+  recognition.lang = 'en-US'; // Changed to English for better accuracy
 }
 
 // Hàm lấy thời gian
@@ -23,7 +15,8 @@ export const getCurrentTime = () => {
 
 // Tin nhắn chào mừng
 export const defaultWelcomeMessage = { 
-  sender: 'ai', 
-  text: 'Xin chào! Tôi là AI Interview Assistant. Hãy bắt đầu buổi phỏng vấn của bạn.', 
-  time: getCurrentTime() 
+sender: 'ai', 
+  // Sửa thành tiếng Anh để đồng bộ với "Language Constraint" của Prompt
+  text: "Hello. I am your AI Technical Recruiter. Please paste the Job Description (JD) so we can define the standard bar for this interview.", 
+  time: getCurrentTime()
 };

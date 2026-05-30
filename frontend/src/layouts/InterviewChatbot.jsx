@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import GlobalStyles from '../components/GlobalStyle/GlobalStyles';
 import AppSider from './AppSider/AppSider';
@@ -11,7 +12,8 @@ import ChatInput from '../components/ChatInput/ChatInput';
 import './InterviewChatbot.css'; 
 
 
-import { Layout, ConfigProvider, theme, Grid, message } from 'antd';
+import { Layout, ConfigProvider, theme, Grid, message, Modal, Upload, Button, Radio, Tabs, Input, Alert } from 'antd';
+import { UploadOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 import { useTheme } from '../hooks/useTheme';
 import { useChat } from '../hooks/useChat';
@@ -26,8 +28,14 @@ const { useBreakpoint } = Grid;
 
 const InterviewChatbot = () => {
   const screens = useBreakpoint();
+  const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const [collapsed, setCollapsed] = useState(false); // UI State có thể giữ lại
+  const [isSetupComplete, setIsSetupComplete] = useState(false); // State cho màn hình setup
+  const [setupMode, setSetupMode] = useState('upload'); // 'upload' | 'topic'
+  const [selectedTopic, setSelectedTopic] = useState('');
+  const [fileList, setFileList] = useState([]); // State quản lý danh sách file và tiến trình upload
+  const [showBanner, setShowBanner] = useState(true);
 
   // --- GỌI CÁC CUSTOM HOOK ---
   
@@ -45,7 +53,12 @@ const InterviewChatbot = () => {
     triggerAiResponse,
     handleRenameChat,
     handleNewChat,
-    handleDeleteChat
+    handleDeleteChat,
+    voiceGender,
+    setVoiceGender,
+    isInterviewFinished,
+    interviewResult,
+    uploadFile
   } = useChat();
   
   const { 
@@ -54,6 +67,118 @@ const InterviewChatbot = () => {
     handleFileUpload, 
     handleRemoveStagedFile 
   } = useFiles();
+
+  // --- CUSTOM UPLOAD HANDLER FOR MODAL ---
+  const handleModalFileUpload = async (info) => {
+    // Antd Upload onChange gives { file, fileList, event }
+    // We use beforeUpload={false} so we handle the file manually
+    const fileObj = info.file.originFileObj || info.file;
+    
+    // Check if already processing or done
+    if (info.file.status === 'uploading' || info.file.status === 'done') return;
+
+    // Tạo entry mới trong fileList
+    const newFileItem = {
+      uid: fileObj.uid,
+      name: fileObj.name,
+      status: 'uploading',
+      percent: 0,
+    };
+
+    setFileList(prev => [...prev, newFileItem]);
+
+    try {
+        // message.loading({ content: `Đang tải lên ${fileObj.name}...`, key: 'uploading' }); // Bỏ loading message vì đã có progress bar
+        
+        const data = await uploadFile(fileObj, (percent) => {
+          // Update progress
+          setFileList(prev => prev.map(f => {
+            if (f.uid === fileObj.uid) {
+              return { ...f, percent: percent };
+            }
+            return f;
+          }));
+        });
+        
+        // Update success status
+        setFileList(prev => prev.map(f => {
+          if (f.uid === fileObj.uid) {
+            return { ...f, status: 'done', percent: 100 };
+          }
+          return f;
+        }));
+
+        setStagedFiles(prev => [...prev, {
+            name: fileObj.name,
+            uri: data.file_uri, // Store URI
+            type: fileObj.type.startsWith('image/') ? 'image' : 'file',
+            data: null 
+        }]);
+        message.success({ content: 'Tải lên thành công!', key: 'uploading' });
+    } catch (e) {
+        console.error(e);
+        // Update error status
+        setFileList(prev => prev.map(f => {
+          if (f.uid === fileObj.uid) {
+            return { ...f, status: 'error' };
+          }
+          return f;
+        }));
+        message.error({ content: 'Lỗi tải lên file.', key: 'uploading' });
+    }
+  };
+
+  // --- SETUP HANDLER ---
+  const handleStartInterview = () => {
+    setIsSetupComplete(true);
+    
+    let initialUserMessage = "";
+    let aiPrompt = "";
+    let filesToSend = [];
+
+    if (setupMode === 'upload' && stagedFiles.length > 0) {
+        initialUserMessage = `Uploaded CV/JD: ${stagedFiles.map(f => f.name).join(', ')}`;
+        aiPrompt = "This is my CV/JD. Please start the interview based on this information. Hello.";
+        filesToSend = stagedFiles;
+    } else if (setupMode === 'topic' && selectedTopic.trim()) {
+        initialUserMessage = `Selected interview topic: ${selectedTopic}`;
+        aiPrompt = `I want to be interviewed on the topic: ${selectedTopic}. Please start the interview. Hello.`;
+    } else {
+        // Fallback
+        initialUserMessage = "Hello, I am ready.";
+        aiPrompt = "Hello, I am ready for the interview. Let's start.";
+    }
+
+    // 1. Hiển thị tin nhắn của User (Fake UI message)
+    const userMsgObject = {
+        sender: 'user',
+        text: initialUserMessage,
+        time: getCurrentTime(),
+        type: 'text'
+    };
+
+    // Nếu có file ảnh thì hiển thị thêm (optional, nhưng user yêu cầu "tin nhắn trống" -> có thể ý là chỉ hiện text thông báo)
+    // Ở đây ta chỉ hiện text thông báo "Đã chọn..." như yêu cầu.
+
+    setChatSessions(prevSessions =>
+        prevSessions.map(chat => {
+          if (chat.id === activeChatId) {
+            return {
+              ...chat,
+              messages: [...chat.messages, userMsgObject]
+            };
+          }
+          return chat;
+        })
+    );
+    
+    // 2. Gọi AI với prompt thực tế (ẩn)
+    triggerAiResponse(aiPrompt, filesToSend);
+    
+    // Clear staged files sau khi gửi
+    setStagedFiles([]); 
+    setFileList([]); // Clear file list UI
+  };
 
   // handleSend là "chất keo" kết dính logic chat và logic file
   const handleSend = useCallback(() => {
@@ -117,9 +242,10 @@ const InterviewChatbot = () => {
     // 4. Dọn dẹp
     setInput(''); 
     setStagedFiles([]);
+    setFileList([]); // Clear file list UI
 
     // 5. Kích hoạt AI
-    triggerAiResponse();
+    triggerAiResponse(currentInput, stagedFiles);
   // (SỬA) Cập nhật dependencies
   }, [activeChat, activeChatId, setChatSessions, stagedFiles, setStagedFiles, triggerAiResponse]);
 
@@ -140,7 +266,13 @@ const InterviewChatbot = () => {
     setIsRecording(false);
     setInput('');
     setStagedFiles([]); 
+    setFileList([]); // Clear file list UI
     handleNewChat(); // Gọi hàm gốc từ useChat
+    
+    // Mở lại modal setup cho session mới
+    setIsSetupComplete(false);
+    setSetupMode('upload');
+    setSelectedTopic('');
   };
   
   const handleVoiceToggleWrapper = () => {
@@ -163,24 +295,111 @@ const InterviewChatbot = () => {
       }}
     >
       <GlobalStyles />
+
+      {/* SETUP MODAL */}
+      <Modal
+        title="Thiết lập phỏng vấn"
+        open={!isSetupComplete}
+        footer={null}
+        closable={false}
+        centered
+        maskClosable={false}
+        width={500}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <Tabs
+            defaultActiveKey="upload"
+            onChange={(key) => setSetupMode(key)}
+            items={[
+              {
+                key: 'upload',
+                label: 'Tải lên CV/JD',
+                children: (
+                  <div>
+                    <p style={{ marginBottom: 8 }}>Vui lòng tải lên CV hoặc JD để AI hiểu rõ hơn về bạn:</p>
+                    <Upload
+                      beforeUpload={() => false} // Prevent auto upload
+                      onChange={handleModalFileUpload}
+                      fileList={fileList}
+                      onRemove={(file) => {
+                        handleRemoveStagedFile(file.uid);
+                        setFileList(prev => prev.filter(f => f.uid !== file.uid));
+                      }}
+                      maxCount={3}
+                    >
+                      <Button icon={<UploadOutlined />}>Tải lên CV/JD</Button>
+                    </Upload>
+                  </div>
+                ),
+              },
+              {
+                key: 'topic',
+                label: 'Chọn chủ đề',
+                children: (
+                  <div>
+                    <p style={{ marginBottom: 8 }}>Chọn chủ đề phổ biến:</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                      {['IT (Công nghệ thông tin)', 'Marketing', 'Sales (Kinh doanh)', 'Customer Service (CSKH)', 'Human Resources (Nhân sự)', 'Graphic Design'].map(topic => (
+                        <Button 
+                          key={topic} 
+                          size="small" 
+                          onClick={() => setSelectedTopic(topic)}
+                          type={selectedTopic === topic ? 'primary' : 'default'}
+                        >
+                          {topic}
+                        </Button>
+                      ))}
+                    </div>
+                    <p style={{ marginBottom: 8 }}>Hoặc nhập chủ đề khác:</p>
+                    <Input 
+                        placeholder="Nhập chủ đề..." 
+                        value={selectedTopic}
+                        onChange={(e) => setSelectedTopic(e.target.value)}
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
+          
+          <div>
+            <p style={{ marginBottom: 8 }}>Chọn giọng nói cho người phỏng vấn:</p>
+            <Radio.Group onChange={(e) => setVoiceGender(e.target.value)} value={voiceGender} buttonStyle="solid">
+              <Radio.Button value="female">Nữ (Clara)</Radio.Button>
+              <Radio.Button value="male">Nam (Matt)</Radio.Button>
+            </Radio.Group>
+          </div>
+
+          <Button 
+            type="primary" 
+            onClick={handleStartInterview} 
+            size="large" 
+            block
+            disabled={ (setupMode === 'upload' && stagedFiles.length === 0) || (setupMode === 'topic' && !selectedTopic.trim()) }
+          >
+            Bắt đầu phỏng vấn
+          </Button>
+        </div>
+      </Modal>
+
       <Layout 
         className="chatbot-layout"
       >
-        
-        <AppSider 
-          collapsed={collapsed} 
-          setCollapsed={setCollapsed} // Truyền state UI
-          themeMode={themeMode}
-          chatSessions={chatSessions}
-          activeChatId={activeChatId}
-          setActiveChatId={setActiveChatId}
-          renamingChatId={renamingChatId}
-          setRenamingChatId={setRenamingChatId}
-          handleRenameChat={handleRenameChat}
-          handleDeleteChat={handleDeleteChat}
-        />
+        {/* Ẩn Sider */}
+        {/* <AppSider ... /> */}
 
         <Layout>
+          {showBanner && (
+            <Alert
+              message="Trang web hiện tại chỉ mới hỗ trợ interview bằng tiếng Anh."
+              type="info"
+              closable
+              onClose={() => setShowBanner(false)}
+              style={{ borderRadius: 0, textAlign: 'center' }}
+              banner
+            />
+          )}
           
           <AppHeader
             themeMode={themeMode}
@@ -196,6 +415,10 @@ const InterviewChatbot = () => {
             >
               <ChatWindow messages={messages} messagesEndRef={messagesEndRef} themeMode={themeMode} />
 
+              <div style={{ padding: '0 16px 8px', fontSize: '12px', color: '#888', textAlign: 'right' }}>
+                Voice: <b>{voiceGender === 'female' ? 'Nữ' : 'Nam'}</b>
+              </div>
+
               <RecordingIndicator isRecording={isRecording} themeMode={themeMode} />
 
               <ChatInput
@@ -208,7 +431,30 @@ const InterviewChatbot = () => {
                 themeMode={themeMode}
                 stagedFiles={stagedFiles}
                 handleRemoveStagedFile={handleRemoveStagedFile}
+                inputRef={inputRef}
               />
+              
+              {/* Button xem kết quả khi phỏng vấn kết thúc */}
+              {isInterviewFinished && (
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: '100px', 
+                  left: '50%', 
+                  transform: 'translateX(-50%)', 
+                  zIndex: 1000 
+                }}>
+                  <Button 
+                    type="primary" 
+                    shape="round" 
+                    size="large" 
+                    icon={<CheckCircleOutlined />}
+                    onClick={() => navigate('/result', { state: { resultText: interviewResult } })}
+                    style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  >
+                    Xem kết quả phỏng vấn
+                  </Button>
+                </div>
+              )}
             </Content>
           </Layout>
         </Layout>

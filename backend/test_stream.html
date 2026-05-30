@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AI Interview Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        input[type="file"] {
+            margin-top: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .response-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            min-height: 200px;
+            white-space: pre-wrap;
+        }
+        .session-info {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .error {
+            color: red;
+        }
+        .status {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 AI Interview Chat Test</h1>
+    
+    <div class="chat-container">
+        <div class="input-group">
+            <label for="message">Message:</label>
+            <textarea id="message" placeholder="Nhập tin nhắn của bạn...">Xin chào, tôi muốn ứng tuyển vị trí Backend Developer</textarea>
+        </div>
+        
+        <div class="input-group">
+            <label for="files">Upload Files (Optional - CV, certificates, etc.):</label>
+            <input type="file" id="files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+            <small>Hỗ trợ: PDF, JPG, PNG, DOC, DOCX</small>
+        </div>
+        
+        <div class="input-group">
+            <label for="session_id">Session ID (Optional):</label>
+            <input type="text" id="session_id" placeholder="Để trống để tạo session mới">
+        </div>
+        
+        <button id="sendBtn" onclick="sendMessage()">Send Message</button>
+        <button onclick="clearResponse()">Clear Response</button>
+    </div>
+    
+    <div class="session-info" id="sessionInfo"></div>
+    <div class="response-container" id="response"></div>
+
+    <script>
+        let currentSessionId = null;
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const filesInput = document.getElementById('files');
+            const sessionIdInput = document.getElementById('session_id');
+            const responseDiv = document.getElementById('response');
+            const sessionInfo = document.getElementById('sessionInfo');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            const message = messageInput.value.trim();
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            // Disable send button
+            sendBtn.disabled = true;
+            responseDiv.innerHTML = '<span class="status">Connecting...</span>';
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('message', message);
+            
+            // Add session_id if provided
+            const sessionId = sessionIdInput.value.trim() || currentSessionId;
+            if (sessionId) {
+                formData.append('session_id', sessionId);
+            }
+            
+            // Add files if selected
+            const files = filesInput.files;
+            if (files.length > 0) {
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+                console.log(`Uploading ${files.length} file(s)`);
+            }
+            
+            try {
+                // Make the request
+                const response = await fetch('http://localhost:8000/chat/stream', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                // Clear previous response
+                responseDiv.innerHTML = '';
+                
+                // Read the stream
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const jsonStr = line.substring(6);
+                            try {
+                                const data = JSON.parse(jsonStr);
+                                
+                                if (data.type === 'session_id') {
+                                    currentSessionId = data.session_id;
+                                    sessionInfo.innerHTML = `Session ID: <code>${data.session_id}</code>`;
+                                    sessionIdInput.value = data.session_id;
+                                } else if (data.type === 'chunk') {
+                                    responseDiv.innerHTML += data.text;
+                                } else if (data.type === 'done') {
+                                    console.log('Stream completed');
+                                } else if (data.type === 'error') {
+                                    responseDiv.innerHTML += `<div class="error">Error: ${data.message}</div>`;
+                                }
+                            } catch (e) {
+                                console.error('Error parsing JSON:', e, jsonStr);
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                responseDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                console.error('Error:', error);
+            } finally {
+                // Re-enable send button
+                sendBtn.disabled = false;
+            }
+        }
+        
+        function clearResponse() {
+            document.getElementById('response').innerHTML = '';
+        }
+        
+        // Allow Enter key to send message
+        document.getElementById('message').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

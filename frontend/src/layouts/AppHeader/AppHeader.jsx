@@ -4,7 +4,6 @@ import {
   MoonOutlined,
   SettingOutlined,
   LogoutOutlined,
-  LeftOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 
@@ -37,23 +36,13 @@ const AppHeader = ({ themeMode, toggleTheme, screens, onNewChat }) => {
     >
       <div className="app-header-content">
         <Space size={12} align="center">
-          {screens.lg && (
-            <Button
-              type="text"
-              shape="circle"
-              icon={<LeftOutlined />}
-              // (SỬA) Dùng className và data-theme
-              className="app-header-button"
-              data-theme={themeMode}
-            />
-          )}
           <div>
             <div
               // (SỬA) Dùng className và data-theme
               className="app-header-title"
               data-theme={themeMode}
             >
-              Interview for UI/UX Designer
+              AI Interviewer
             </div>
             {screens.lg && (
               <div
@@ -61,7 +50,7 @@ const AppHeader = ({ themeMode, toggleTheme, screens, onNewChat }) => {
                 className="app-header-subtitle"
                 data-theme={themeMode}
               >
-                AI Assistant
+                Naver Hackathon
               </div>
             )}
           </div>
@@ -89,12 +78,6 @@ const AppHeader = ({ themeMode, toggleTheme, screens, onNewChat }) => {
               />
             </Tooltip>
           )}
-          <Dropdown overlay={userMenu} trigger={['hover']}>
-            {/* (GIỮ NGUYÊN) Style này là riêng biệt, giữ lại inline cũng không sao */}
-            <Avatar style={{ backgroundColor: '#1677ff', cursor: 'pointer', transition: 'all 0.3s' }} className="hover:opacity-80">
-              404
-            </Avatar>
-          </Dropdown>
         </Space>
       </div>
     </Header>
